@@ -158,7 +158,7 @@ This project is open source and available under the [MIT License](LICENSE).
 ## Contact
 
 **Developer**: Zain Ali  
-**Email**: zainalicsdev@example.com  
+**Email**: zain.ali.cs.dev@gmail.com  
 **GitHub**: [zain0313233](https://github.com/zain0313233)
 
 ---
