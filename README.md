@@ -35,7 +35,7 @@ CourseHub_LMS_BE/
 ├── middleware/              # Authentication middleware (planned)
 ├── .env                     # Environment variables
 ├── .gitignore              # Git ignore file
-├── app.js                  # Main application file
+├── index.js                  # Main application file
 ├── package.json            # Project dependencies
 └── README.md               # Project documentation
 ```
