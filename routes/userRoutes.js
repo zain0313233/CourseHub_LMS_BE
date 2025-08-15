@@ -1,46 +1,25 @@
-const User = require('../models/user');
-const express =require('express')
-const router=express.Router();
-router.post('/create-user', async (req, res) => {
-    try {
-        const { name, email, password, role, profile } = req.body;
-        
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'User with this email already exists'
-            });
-        }
+const User = require("../models/user");
+const express = require("express");
+const router = express.Router();
 
-        const user = new User({
-            name,
-            email,
-            password,
-            role,
-            profile
-        });
-
-        await user.save();
-
-        res.status(201).json({
-            status: 'success',
-            message: 'User created successfully',
-            data: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                createdAt: user.createdAt
-            }
-        });
-    } catch (error) {
-        console.error('An error occurred:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Internal server error',
-            error: error.message
-        });
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "User ID is required" });
     }
+     const user = await User.findById(id).select("-password");
+     if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({
+      message: "User data retrieved successfully",
+      userdata: user
+    });
+  } catch (error) {
+    console.error("Something went wrong:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
 });
-module.exports=router;
+
+module.exports = router;
