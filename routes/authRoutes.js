@@ -17,7 +17,9 @@ router.post('/signup', async (req, res) => {
             role, 
             educationLevel, 
             experience, 
-            subjects, 
+            subjects,
+            batch,
+            status, 
             bio, 
             learningGoals 
         } = req.body;
@@ -45,6 +47,7 @@ router.post('/signup', async (req, res) => {
                 educationLevel,
                 experience: parseInt(experience) || 0,
                 subjects,
+                batch,
                 bio
               }
             : {
@@ -62,7 +65,8 @@ router.post('/signup', async (req, res) => {
             dateOfBirth,
             password: hashedPassword,
             role,
-            profile: profileData
+            profile: profileData,
+            status,
         });
 
         await user.save();

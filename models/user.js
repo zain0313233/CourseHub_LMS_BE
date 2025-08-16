@@ -58,6 +58,13 @@ const userSchema = new mongoose.Schema({
     experience: {
       type: Number
     },
+    followers: {
+      type: Number,
+      default:0
+    },
+    batch: {
+      type: String
+    },
     subjects: [
       {
         type: String,
@@ -68,6 +75,9 @@ const userSchema = new mongoose.Schema({
       type: String,
       trim: true
     }
+  },
+  status: {
+    type: String
   },
   createdAt: {
     type: Date,
