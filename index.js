@@ -2,6 +2,7 @@ const express= require('express');
 const cors = require('cors');
 const userRoutes=require('./routes/userRoutes')
 const authRoutes=require('./routes/authRoutes')
+const courseRoutes=require('./routes/courseRoutes')
 const mongooseConnection=require('./config/database')
 const app=express();
 app.use(cors({
@@ -15,6 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 mongooseConnection();
 app.use('/api/users',userRoutes);
 app.use('/api/auth',authRoutes);
+app.use('/api/courses',courseRoutes)
 app.use('/api/health',(req,res)=>{
     res.status(200).json({
         status:"ok",
