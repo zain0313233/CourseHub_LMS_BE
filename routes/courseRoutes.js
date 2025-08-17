@@ -147,41 +147,17 @@ router.post("/create", upload.single('thumbnail'), async (req, res) => {
 router.get("/teacher/:teacherId", async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const { page = 1, limit = 10, status, category } = req.query;
-
-   
-    const teacher = await User.findById(teacherId);
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: "Teacher not found"
-      });
-    }
-
-    let query = { teacher: teacherId };
-    
-    if (status) {
-      query.status = status;
-    }
-    
-    if (category) {
-      query.category = category;
-    }
-
+    const { page = 1, limit = 10 } = req.query;
     
     const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    
-    const courses = await Course.find(query)
+    const courses = await Course.find({ teacher: teacherId })
       .populate('teacher', 'name email role')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
-
-    
-    const totalCourses = await Course.countDocuments(query);
+    const totalCourses = await Course.countDocuments({ teacher: teacherId });
     const totalPages = Math.ceil(totalCourses / parseInt(limit));
-
+    
     res.status(200).json({
       success: true,
       message: "Courses retrieved successfully",
@@ -196,7 +172,7 @@ router.get("/teacher/:teacherId", async (req, res) => {
         }
       }
     });
-
+    
   } catch (error) {
     console.error("Error fetching courses:", error);
     res.status(500).json({
