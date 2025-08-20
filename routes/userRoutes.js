@@ -1,17 +1,21 @@
 const User = require("../models/user");
 const express = require("express");
-const { getGoogleDriveAuth } = require("../config/googledrive");
-const { google } = require("googleapis");
 const router = express.Router();
 const path = require("path");
 const multer = require("multer");
-const { Readable } = require("stream");
+const cloudinary = require("cloudinary").v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100MB for videos
+    fileSize: 100 * 1024 * 1024 
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("video/")) {
@@ -22,49 +26,25 @@ const upload = multer({
   }
 });
 
-function BufferToStream(buffer) {
-  const readable = new Readable();
-  readable.push(buffer);
-  readable.push(null);
-  return readable;
-}
-
-const uploadVideoToDrive = async (fileBuffer, fileName, mimeType) => {
+const uploadVideoToCloudinary = async (buffer, fileName) => {
   try {
-    const auth = getGoogleDriveAuth();
-    const drive = google.drive({ version: "v3", auth });
-
+    const base64Data = buffer.toString("base64");
+    const dataUri = `data:video/mp4;base64,${base64Data}`;
     
-    const response = await drive.files.create({
-      requestBody: {
-        name: fileName,
-        parents: [process.env.GOOGLE_DRIVE_FOLDERID] 
-      },
-      media: {
-        mimeType: mimeType,
-        body: BufferToStream(fileBuffer), 
-      },
-      fields: "id,name,webViewLink",
+    const result = await cloudinary.uploader.upload(dataUri, {
+      public_id: fileName,
+      resource_type: "video",
+      folder: "user_videos", 
+      transformation: [
+        { quality: "auto" }, 
+        { format: "mp4" }
+      ]
     });
-
-    const fileId = response.data.id;
-
     
-    await drive.permissions.create({
-      fileId,
-      requestBody: {
-        role: "reader",
-        type: "anyone",
-      },
-    });
-
-    
-    const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
-
-    console.log("Drive upload successful:", fileUrl);
-    return fileUrl;
+    console.log("Cloudinary upload successful:", result.secure_url);
+    return result.secure_url;
   } catch (error) {
-    console.error("Drive upload error:", error);
+    console.error("Cloudinary upload error:", error);
     return null;
   }
 };
@@ -87,7 +67,7 @@ router.patch("/:id/video", upload.single("video"), async (req, res) => {
       });
     }
 
-    
+   
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({
@@ -97,24 +77,20 @@ router.patch("/:id/video", upload.single("video"), async (req, res) => {
     }
 
     const fileName = generateFilename(req.file.originalname);
-    const fileUrl = await uploadVideoToDrive(
-      req.file.buffer,
-      fileName,
-      req.file.mimetype
-    );
+    const videoUrl = await uploadVideoToCloudinary(req.file.buffer, fileName);
 
-    if (!fileUrl) {
+    if (!videoUrl) {
       return res.status(500).json({
         success: false,
-        message: "Video upload to Google Drive failed"
+        message: "Video upload to Cloudinary failed"
       });
     }
 
-    
+   
     const updatedUser = await User.findByIdAndUpdate(
       id,
       { 
-        videoUrl: fileUrl, 
+        videoUrl: videoUrl,
         updatedAt: new Date()
       }, 
       { new: true }
@@ -124,7 +100,7 @@ router.patch("/:id/video", upload.single("video"), async (req, res) => {
       success: true,
       message: "Video uploaded successfully",
       user: updatedUser,
-      videoUrl: fileUrl
+      videoUrl: videoUrl
     });
 
   } catch (error) {
