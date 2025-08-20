@@ -1,44 +1,70 @@
 const User = require("../models/user");
 const express = require("express");
+const { getGoogleDriveAuth } = require("../config/googledrive");
+const { google } = require("googleapis");
 const router = express.Router();
 const path = require("path");
 const multer = require("multer");
-const cloudinary = require("cloudinary").v2;
+const { Readable } = require("stream");
 
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024
+    fileSize: 100 * 1024 * 1024 // 100MB for videos
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
+    if (file.mimetype.startsWith("video/")) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files are allowed!"), false);
+      cb(new Error("Only video files are allowed!"), false);
     }
   }
 });
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+function BufferToStream(buffer) {
+  const readable = new Readable();
+  readable.push(buffer);
+  readable.push(null);
+  return readable;
+}
 
-const uploadImageTocloudinary = async (buffer, fileName) => {
+const uploadVideoToDrive = async (fileBuffer, fileName, mimeType) => {
   try {
-    const base64Data = buffer.toString("base64");
-    const dataUri = `data:image/jpeg;base64,${base64Data}`;
-    const result = await cloudinary.uploader.upload(dataUri, {
-      public_id: fileName,
-      resource_type: "image"
-    });
-    console.log("Cloudinary upload successful:", result.secure_url);
-    return result.secure_url;
-  } catch (error) {
-    console.error("Cloudinary upload error:", error);
+    const auth = getGoogleDriveAuth();
+    const drive = google.drive({ version: "v3", auth });
+
     
+    const response = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [process.env.GOOGLE_DRIVE_FOLDERID] 
+      },
+      media: {
+        mimeType: mimeType,
+        body: BufferToStream(fileBuffer), 
+      },
+      fields: "id,name,webViewLink",
+    });
+
+    const fileId = response.data.id;
+
+    
+    await drive.permissions.create({
+      fileId,
+      requestBody: {
+        role: "reader",
+        type: "anyone",
+      },
+    });
+
+    
+    const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
+
+    console.log("Drive upload successful:", fileUrl);
+    return fileUrl;
+  } catch (error) {
+    console.error("Drive upload error:", error);
     return null;
   }
 };
@@ -50,58 +76,63 @@ function generateFilename(originalName) {
   return `${timestamp}_${randomString}${extension}`;
 }
 
-router.get("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-     const user = await User.findById(id).select("-password");
-     if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    return res.status(200).json({
-      message: "User data retrieved successfully",
-      userdata: user
-    });
-  } catch (error) {
-    console.error("Something went wrong:", error);
-    return res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.put("/:id/profile-image", upload.single("profileImage"), async (req, res) => {
+router.patch("/:id/video", upload.single("video"), async (req, res) => {
   try {
     const { id } = req.params;
 
     if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({
+        success: false,
+        message: "No video file uploaded"
+      });
+    }
+
+    
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
     }
 
     const fileName = generateFilename(req.file.originalname);
-    const imageUrl = await uploadImageToCloudinary(req.file.buffer, fileName);
+    const fileUrl = await uploadVideoToDrive(
+      req.file.buffer,
+      fileName,
+      req.file.mimetype
+    );
 
-    if (!imageUrl) {
-      return res.status(500).json({ message: "Image upload failed" });
+    if (!fileUrl) {
+      return res.status(500).json({
+        success: false,
+        message: "Video upload to Google Drive failed"
+      });
     }
 
+    
     const updatedUser = await User.findByIdAndUpdate(
       id,
-      { profileImageUrl: imageUrl, updatedAt: Date.now() },
+      { 
+        videoUrl: fileUrl, 
+        updatedAt: new Date()
+      }, 
       { new: true }
     ).select("-password");
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
     return res.status(200).json({
-      message: "Profile image updated successfully",
+      success: true,
+      message: "Video uploaded successfully",
       user: updatedUser,
+      videoUrl: fileUrl
     });
+
   } catch (error) {
-    console.error("Error updating profile image:", error);
-    return res.status(500).json({ message: "Server error" });
+    console.error("Route error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
   }
 });
 

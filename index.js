@@ -4,6 +4,7 @@ const userRoutes=require('./routes/userRoutes')
 const authRoutes=require('./routes/authRoutes')
 const courseRoutes=require('./routes/courseRoutes')
 const mongooseConnection=require('./config/database')
+const blogRoutes=require('./routes/blogRoutes')
 const app=express();
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001'],
@@ -16,6 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 mongooseConnection();
 app.use('/api/users',userRoutes);
 app.use('/api/auth',authRoutes);
+app.use('/api/blogs',blogRoutes);
 app.use('/api/courses',courseRoutes)
 app.use('/api/health',(req,res)=>{
     res.status(200).json({

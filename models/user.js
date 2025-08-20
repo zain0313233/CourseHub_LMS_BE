@@ -46,6 +46,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  videoUrl: { 
+    type: String,
+    trim: true
+  },
   profile: {
     bio: {
       type: String,
@@ -60,7 +64,7 @@ const userSchema = new mongoose.Schema({
     },
     followers: {
       type: Number,
-      default:0
+      default: 0
     },
     batch: {
       type: String
