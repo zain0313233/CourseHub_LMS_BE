@@ -55,10 +55,30 @@ function generateFilename(originalName) {
   const extension = path.extname(originalName);
   return `${timestamp}_${randomString}${extension}`;
 }
+ router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+     const user = await User.findById(id).select("-password");
+     if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({
+      message: "User data retrieved successfully",
+      userdata: user
+    });
+  } catch (error) {
+    console.error("Something went wrong:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
 
 router.patch("/:id/video", upload.single("video"), async (req, res) => {
   try {
     const { id } = req.params;
+    const {videotitle, vediodescription} = req.body;
 
     if (!req.file) {
       return res.status(400).json({
@@ -89,7 +109,8 @@ router.patch("/:id/video", upload.single("video"), async (req, res) => {
    
     const updatedUser = await User.findByIdAndUpdate(
       id,
-      { 
+      { vediotitle: videotitle,
+        vediodescription: vediodescription,
         videoUrl: videoUrl,
         updatedAt: new Date()
       }, 
@@ -111,5 +132,39 @@ router.patch("/:id/video", upload.single("video"), async (req, res) => {
     });
   }
 });
+// router.put("/:id/profile-image", upload.single("profileImage"), async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     if (!req.file) {
+//       return res.status(400).json({ message: "No file uploaded" });
+//     }
+
+//     const fileName = generateFilename(req.file.originalname);
+//     const imageUrl = await uploadImageToCloudinary(req.file.buffer, fileName);
+
+//     if (!imageUrl) {
+//       return res.status(500).json({ message: "Image upload failed" });
+//     }
+
+//     const updatedUser = await User.findByIdAndUpdate(
+//       id,
+//       { profileImageUrl: imageUrl, updatedAt: Date.now() },
+//       { new: true }
+//     ).select("-password");
+
+//     if (!updatedUser) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     return res.status(200).json({
+//       message: "Profile image updated successfully",
+//       user: updatedUser,
+//     });
+//   } catch (error) {
+//     console.error("Error updating profile image:", error);
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// });
 
 module.exports = router;

@@ -107,9 +107,33 @@ const createBlog = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+const getBlogById=async(req,res)=>{
+try{
+  const {teacherid}=req.params;
+  const { page = 1, limit = 10 } = req.query;
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+  const blogs =await Blogs.find({teacher:teacherid}).populate("teacher", "name email role").sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+  if (!blogs || blogs.length === 0) {
+    return res.status(404).json({ message: "No blogs found for this teacher" });
+  }
+  return res.status(200).json({
+    success: true,
+    message: "Blogs fetched successfully",
+    data: blogs
+  });
+
+}catch(error){
+    console.error("Error fetching blog by ID:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
 
 module.exports = {
   uploadImageTocloudinary,
   generateFilename,
-  createBlog
+  createBlog,
+  getBlogById
 };

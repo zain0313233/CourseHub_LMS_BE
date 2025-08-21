@@ -1,5 +1,5 @@
 const express = require('express');
-const {createBlog} = require('./../controller/blogController');
+const {createBlog,getBlogById} = require('./../controller/blogController');
 const multer = require("multer")
 const router = express.Router();
 
@@ -19,4 +19,5 @@ const upload = multer({
 });
 
 router.post('/create', upload.single('thumbnail'), createBlog);
+router.get('/teacher/:teacherid',getBlogById);
 module.exports = router;

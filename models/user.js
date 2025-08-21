@@ -50,6 +50,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  videotitle: {
+    type: String,
+    trim: true
+  },
+  vediodescription: {
+    type: String,
+    trim: true
+  },
   profile: {
     bio: {
       type: String,

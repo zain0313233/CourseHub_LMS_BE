@@ -17,6 +17,10 @@ const blogschema = mongoose.Schema(
       ref: "User",
       required: true
     },
+    thumbnail: {
+      type: String,
+      trim: true
+    },
     views: {
       type: Number,
       default: 0
