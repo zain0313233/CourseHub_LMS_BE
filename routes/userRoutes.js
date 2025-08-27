@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const path = require("path");
 const multer = require("multer");
+const Course = require("../models/course");
 const cloudinary = require("cloudinary").v2;
 
 cloudinary.config({
@@ -18,7 +19,7 @@ const upload = multer({
     fileSize: 100 * 1024 * 1024 
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("video/")) {
+    if (file.mimetype.startsWith("video/") || file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
       cb(new Error("Only video files are allowed!"), false);
@@ -40,6 +41,7 @@ const uploadVideoToCloudinary = async (buffer, fileName) => {
         { format: "mp4" }
       ]
     });
+
     
     console.log("Cloudinary upload successful:", result.secure_url);
     return result.secure_url;
@@ -48,6 +50,27 @@ const uploadVideoToCloudinary = async (buffer, fileName) => {
     return null;
   }
 };
+const uploadImageToCloudinary = async (buffer, fileName) => {
+  try{
+    const base64Data=buffer.toString("base64");
+    const dataUri=`data:image/jpeg;base64,${base64Data}`;
+    const result=await cloudinary.uploader.upload(dataUri,{
+      public_id:fileName,
+      resource_type:"image",
+      folder:"profile_pictures",
+      transformation:[
+        {width:500, height:500, crop:"fill"},
+        {quality:"auto"},
+        {fetch_format:"auto"}
+      ]
+    });
+    console.log("Cloudinary image upload successful:", result.secure_url);
+    return result.secure_url;
+  }catch(error){
+    console.error("Cloudinary image upload error:", error);
+    return null;
+  }
+}
 
 function generateFilename(originalName) {
   const timestamp = Date.now();
@@ -69,6 +92,46 @@ function generateFilename(originalName) {
       message: "User data retrieved successfully",
       userdata: user
     });
+  } catch (error) {
+    console.error("Something went wrong:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+router.get('/role/:role', async (req, res) => {
+  try {
+    const { role } = req.params;
+    
+    if (!role) {
+      return res.status(400).json({ message: "Role parameter is required" });
+    }
+
+    const users = await User.find({ role: role }).select("-password");
+    
+    if (!users || users.length === 0) {
+      return res.status(404).json({ message: "No users found with the specified role" });
+    }
+    if (role === "teacher") {
+      const usersWithCourses = await Promise.all(
+        users.map(async (user) => {
+          const teacherCourses = await Course.find({ teacher: user._id });
+          return {
+            ...user.toObject(),
+            courses: teacherCourses
+          };
+        })
+      );
+
+      return res.status(200).json({
+        message: "Teachers retrieved successfully",
+        users: usersWithCourses
+      });
+    }
+
+    return res.status(200).json({
+      message: "Users retrieved successfully",
+      users: users
+    });
+
   } catch (error) {
     console.error("Something went wrong:", error);
     return res.status(500).json({ message: "Server error" });
@@ -132,39 +195,39 @@ router.patch("/:id/video", upload.single("video"), async (req, res) => {
     });
   }
 });
-// router.put("/:id/profile-image", upload.single("profileImage"), async (req, res) => {
-//   try {
-//     const { id } = req.params;
+router.patch("/:id/upload-profile-picture", upload.single("image"), async (req, res) => {
+  try {
+    const { id } = req.params;
 
-//     if (!req.file) {
-//       return res.status(400).json({ message: "No file uploaded" });
-//     }
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
 
-//     const fileName = generateFilename(req.file.originalname);
-//     const imageUrl = await uploadImageToCloudinary(req.file.buffer, fileName);
+    const fileName = generateFilename(req.file.originalname);
+    const imageUrl = await uploadImageToCloudinary(req.file.buffer, fileName);
 
-//     if (!imageUrl) {
-//       return res.status(500).json({ message: "Image upload failed" });
-//     }
+    if (!imageUrl) {
+      return res.status(500).json({ message: "Image upload failed" });
+    }
 
-//     const updatedUser = await User.findByIdAndUpdate(
-//       id,
-//       { profileImageUrl: imageUrl, updatedAt: Date.now() },
-//       { new: true }
-//     ).select("-password");
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { profileImageUrl: imageUrl, updatedAt: Date.now() },
+      { new: true }
+    ).select("-password");
 
-//     if (!updatedUser) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-//     return res.status(200).json({
-//       message: "Profile image updated successfully",
-//       user: updatedUser,
-//     });
-//   } catch (error) {
-//     console.error("Error updating profile image:", error);
-//     return res.status(500).json({ message: "Server error" });
-//   }
-// });
+    return res.status(200).json({
+      message: "Profile image updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating profile image:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;
