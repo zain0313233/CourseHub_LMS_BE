@@ -7,7 +7,7 @@ const mongooseConnection=require('./config/database')
 const blogRoutes=require('./routes/blogRoutes')
 const app=express();
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: ['http://localhost:3000', 'http://localhost:3001','http://192.168.10.9:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -25,8 +25,9 @@ app.use('/api/health',(req,res)=>{
         message:"LMS Server is Running"
     })
 })
-const PORT=3001;
-app.listen(PORT,()=>{
-    console.log(`LMS BE listining on Port ${PORT}`)
-})
+const PORT = 3001;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`LMS BE listening on Port ${PORT}`);
+});
+
 module.exports = app;
