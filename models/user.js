@@ -42,15 +42,22 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-    teachingfee: {
-      type: Number,
-      default: 0
-    },
+  resetPasswordToken: {
+    type: String
+  },
+  resetPasswordExpires: {
+    type: Date
+  },
+
+  teachingfee: {
+    type: Number,
+    default: 0
+  },
   cvUrl: {
     type: String,
     trim: true
   },
-  videoUrl: { 
+  videoUrl: {
     type: String,
     trim: true
   },
