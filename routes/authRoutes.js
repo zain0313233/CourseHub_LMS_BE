@@ -1,6 +1,7 @@
 const User = require("../models/user");
 const express = require("express");
 const bcrypt = require("bcryptjs");
+
 const {
   authMiddleware,
   getAccessToken
@@ -335,7 +336,7 @@ router.post("/get-reset-link", async (req, res) => {
 
     const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
 
-    await sendResetEmail(user.email, resetLink);
+    await sendResetEmail(user.email, resetLink, userName=user.name);
 
     return res.status(200).json({
       success: true,
@@ -346,5 +347,30 @@ router.post("/get-reset-link", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+
+router.post("/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  const user = await User.findOne({
+    resetPasswordToken: token,
+    resetPasswordExpires: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    return res.status(400).json({ message: "Invalid or expired reset link" });
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  user.password = hashedPassword;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+
+  await user.save();
+
+  res.json({ success: true, message: "Password reset successful" });
+});
+
 
 module.exports = router;
