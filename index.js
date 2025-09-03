@@ -7,7 +7,7 @@ const mongooseConnection=require('./config/database')
 const blogRoutes=require('./routes/blogRoutes')
 const app=express();
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001','http://192.168.10.9:3000'],
+  origin: ['http://localhost:3000', 'http://localhost:3001','http://192.168.10.9:3000','https://coursehublms.netlify.app'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
