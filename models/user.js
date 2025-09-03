@@ -13,6 +13,13 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
+  emailStatus: {
+    type: String,
+    enum: ["verified", "unverified"],
+    default: "unverified"
+  },
+  verifyEmailToken: String,
+  verifyEmailExpires: Date,
   phone: {
     type: String,
     trim: true

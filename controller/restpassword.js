@@ -2,31 +2,36 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
-function genrateresetToken(userId) {
-  try {
-    if (!userId) {
-      throw new Error("User ID required");
-    }
-
-    const resetToken = jwt.sign(
-      { userId, type: "reset" },
-      process.env.Jwt_RESET_TOKEN,
-      { expiresIn: "15m" }
-    );
-
-    return resetToken;
-  } catch (error) {
-    console.error("Token generation error:", error);
-    throw new Error("Failed to generate reset token");
+function generateTokens({ userId, verifyToken = false }) {
+  if (!userId) {
+    throw new Error("User ID required");
   }
+
+  const tokenConfig = verifyToken 
+    ? {
+        payload: { userId, type: "verifymail" },
+        secret: process.env.JWT_VERIFY_TOKEN,
+        options: { expiresIn: "24h" }
+      }
+    : {
+        payload: { userId, type: "reset" },
+        secret: process.env.JWT_RESET_TOKEN,
+        options: { expiresIn: "15m" }
+      };
+
+  return jwt.sign(
+    tokenConfig.payload,
+    tokenConfig.secret,
+    tokenConfig.options
+  );
 }
 async function sendResetEmail(toEmail, resetLink, userName = "User") {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
+      pass: process.env.EMAIL_PASSWORD
+    }
   });
 
   const htmlTemplate = `
@@ -515,7 +520,7 @@ async function sendResetEmail(toEmail, resetLink, userName = "User") {
     to: toEmail,
     subject: "🔐 Password Reset Request - CourseHub LMS",
     html: htmlTemplate,
-    
+
     text: `
       Hi ${userName},
       
@@ -532,10 +537,524 @@ async function sendResetEmail(toEmail, resetLink, userName = "User") {
       
       Thanks,
       CourseHub LMS Team
-    `,
+    `
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+async function sendVerificationEmail(toEmail, verifyLink, userName = "User") {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    }
+  });
+
+  const htmlTemplate = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Email Verification - CourseHub LMS</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #374151;
+          background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+          min-height: 100vh;
+          padding: 20px;
+        }
+        
+        .email-container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: #ffffff;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          border: 1px solid #e5e7eb;
+        }
+        
+        .header {
+          background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+          padding: 40px 30px;
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 120px;
+          height: 120px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          transform: translate(50%, -50%);
+        }
+        
+        .header::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 80px;
+          height: 80px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          transform: translate(-50%, 50%);
+        }
+        
+        .logo-container {
+          position: relative;
+          z-index: 10;
+          display: inline-flex;
+          align-items: center;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 16px;
+          padding: 16px 24px;
+          margin-bottom: 20px;
+        }
+        
+        .logo-icon {
+          width: 40px;
+          height: 40px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 12px;
+        }
+        
+        .logo-text {
+          color: #ffffff;
+          font-size: 20px;
+          font-weight: bold;
+        }
+        
+        .logo-subtitle {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 12px;
+          margin-top: 2px;
+        }
+        
+        .header-title {
+          color: #ffffff;
+          font-size: 24px;
+          font-weight: bold;
+          margin: 0;
+          position: relative;
+          z-index: 10;
+        }
+        
+        .header-subtitle {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 14px;
+          margin-top: 8px;
+          position: relative;
+          z-index: 10;
+        }
+        
+        .content {
+          padding: 40px 30px;
+        }
+        
+        .greeting {
+          font-size: 18px;
+          color: #1f2937;
+          margin-bottom: 20px;
+          font-weight: 600;
+        }
+        
+        .message {
+          font-size: 16px;
+          color: #4b5563;
+          margin-bottom: 30px;
+          line-height: 1.6;
+        }
+        
+        .verification-notice {
+          background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+          border: 1px solid #10b981;
+          border-radius: 12px;
+          padding: 20px;
+          margin: 30px 0;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .verification-notice::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 4px;
+          height: 100%;
+          background: linear-gradient(to bottom, #10b981, #059669);
+        }
+        
+        .verification-icon {
+          width: 24px;
+          height: 24px;
+          background: #10b981;
+          border-radius: 6px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 12px;
+          vertical-align: middle;
+        }
+        
+        .verification-title {
+          font-weight: 600;
+          color: #1f2937;
+          font-size: 16px;
+          margin-bottom: 8px;
+          display: flex;
+          align-items: center;
+        }
+        
+        .verification-text {
+          font-size: 14px;
+          color: #047857;
+          margin-left: 36px;
+        }
+        
+        .button-container {
+          text-align: center;
+          margin: 40px 0;
+        }
+        
+        .verify-button {
+          display: inline-block;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: #ffffff !important;
+          text-decoration: none;
+          padding: 16px 32px;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 16px;
+          box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+          transition: all 0.3s ease;
+          border: 2px solid transparent;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .verify-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 15px 35px rgba(16, 185, 129, 0.4);
+          background: linear-gradient(135deg, #059669, #047857);
+        }
+        
+        .verify-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          transition: left 0.5s ease;
+        }
+        
+        .verify-button:hover::before {
+          left: 100%;
+        }
+        
+        .alternative-link {
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 16px;
+          margin: 20px 0;
+          font-size: 14px;
+          color: #6b7280;
+          word-break: break-all;
+        }
+        
+        .alternative-title {
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 8px;
+        }
+        
+        .welcome-notice {
+          background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+          border: 1px solid #8b5cf6;
+          border-radius: 12px;
+          padding: 20px;
+          margin: 30px 0;
+          position: relative;
+        }
+        
+        .welcome-notice::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 4px;
+          height: 100%;
+          background: #8b5cf6;
+        }
+        
+        .welcome-icon {
+          width: 20px;
+          height: 20px;
+          background: #8b5cf6;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 8px;
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+        }
+        
+        .welcome-text {
+          font-size: 14px;
+          color: #6b21a8;
+          display: flex;
+          align-items: center;
+        }
+        
+        .footer {
+          background: #f9fafb;
+          padding: 30px;
+          border-top: 1px solid #e5e7eb;
+        }
+        
+        .footer-content {
+          text-align: center;
+        }
+        
+        .footer-title {
+          font-size: 16px;
+          color: #374151;
+          margin-bottom: 15px;
+          font-weight: 600;
+        }
+        
+        .footer-links {
+          margin: 20px 0;
+        }
+        
+        .footer-link {
+          color: #10b981;
+          text-decoration: none;
+          font-size: 14px;
+          margin: 0 15px;
+          border-bottom: 1px solid transparent;
+          transition: border-color 0.3s ease;
+        }
+        
+        .footer-link:hover {
+          border-bottom-color: #10b981;
+        }
+        
+        .company-info {
+          font-size: 12px;
+          color: #9ca3af;
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 1px solid #e5e7eb;
+        }
+        
+        .social-links {
+          margin: 15px 0;
+        }
+        
+        .social-link {
+          display: inline-block;
+          width: 36px;
+          height: 36px;
+          background: #e5e7eb;
+          border-radius: 8px;
+          margin: 0 5px;
+          text-align: center;
+          line-height: 36px;
+          color: #6b7280;
+          text-decoration: none;
+          transition: all 0.3s ease;
+        }
+        
+        .social-link:hover {
+          background: #10b981;
+          color: white;
+          transform: translateY(-2px);
+        }
+        
+        @media only screen and (max-width: 600px) {
+          .email-container {
+            margin: 10px;
+            border-radius: 12px;
+          }
+          
+          .header, .content, .footer {
+            padding: 25px 20px;
+          }
+          
+          .header-title {
+            font-size: 20px;
+          }
+          
+          .verify-button {
+            display: block;
+            margin: 20px 0;
+            padding: 14px 24px;
+          }
+          
+          .logo-container {
+            padding: 12px 20px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+          <div class="logo-container">
+            <div class="logo-icon">
+              <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+                <path d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25A8.966 8.966 0 0118 3.75c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+              </svg>
+            </div>
+            <div>
+              <div class="logo-text">CourseHub LMS</div>
+              <div class="logo-subtitle">Learn & Grow</div>
+            </div>
+          </div>
+          <h1 class="header-title">Welcome to CourseHub!</h1>
+          <p class="header-subtitle">Please verify your email address</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+          <div class="greeting">Hi ${userName},</div>
+          
+          <div class="message">
+            Welcome to CourseHub LMS! We're excited to have you join our learning community. 
+            To complete your registration and start exploring our courses, please verify your 
+            email address by clicking the button below.
+          </div>
+          
+          <div class="verification-notice">
+            <div class="verification-title">
+              <div class="verification-icon">
+                <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              Email Verification Required
+            </div>
+            <div class="verification-text">
+              Click the verification link to activate your account and access all CourseHub features.
+            </div>
+          </div>
+          
+          <div class="button-container">
+            <a href="${verifyLink}" class="verify-button" target="_blank">
+              ✅ Verify My Email
+            </a>
+          </div>
+          
+          <div class="alternative-link">
+            <div class="alternative-title">Can't click the button? Copy and paste this link:</div>
+            ${verifyLink}
+          </div>
+          
+          <div class="welcome-notice">
+            <div class="welcome-text">
+              <div class="welcome-icon">🎉</div>
+              <strong>What's next?</strong> Once verified, you'll have access to thousands of courses and can start your learning journey!
+            </div>
+          </div>
+          
+          <div class="message">
+            If you didn't create an account with CourseHub LMS, you can safely ignore this email.
+            Need help? Contact our support team at 
+            <a href="mailto:zain.ali.cs.dev@gmail.com" style="color: #10b981;">zain.ali.cs.dev@gmail.com</a>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+          <div class="footer-content">
+            <div class="footer-title">Welcome to the CourseHub community!</div>
+            <div class="message" style="margin-bottom: 20px; font-size: 14px;">
+              Join thousands of learners advancing their skills with expert-led courses.
+            </div>
+            
+            <div class="footer-links">
+              <a href="https://your-app.com/courses" class="footer-link">Browse Courses</a>
+              <a href="https://your-app.com/help" class="footer-link">Help Center</a>
+              <a href="https://your-app.com/contact" class="footer-link">Contact Us</a>
+            </div>
+            
+            <div class="social-links">
+              <a href="#" class="social-link">📘</a>
+              <a href="#" class="social-link">🐦</a>
+              <a href="#" class="social-link">💼</a>
+              <a href="#" class="social-link">📸</a>
+            </div>
+            
+            <div class="company-info">
+              <div>© 2024 CourseHub LMS. All rights reserved.</div>
+              <div style="margin-top: 8px;">
+                This email was sent to ${toEmail} for account verification.
+              </div>
+              <div style="margin-top: 8px;">
+                CourseHub LMS - Empowering learners worldwide
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const mailOptions = {
+    from: `"CourseHub LMS" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: "✅ Verify Your Email - Welcome to CourseHub LMS!",
+    html: htmlTemplate,
+    text: `
+      Hi ${userName},
+      
+      Welcome to CourseHub LMS! 
+      
+      Please verify your email address by clicking the link below:
+      ${verifyLink}
+      
+      Once verified, you'll have access to thousands of courses and can start your learning journey.
+      
+      If you didn't create an account with CourseHub LMS, you can safely ignore this email.
+      
+      Need help? Contact us at zain.ali.cs.dev@gmail.com
+      
+      Welcome to the community!
+      CourseHub LMS Team
+    `
   };
 
   await transporter.sendMail(mailOptions);
 }
 
-module.exports = { genrateresetToken, sendResetEmail };
+module.exports = { generateTokens, sendResetEmail,sendVerificationEmail };
