@@ -5,6 +5,7 @@ const authRoutes=require('./routes/authRoutes')
 const courseRoutes=require('./routes/courseRoutes')
 const mongooseConnection=require('./config/database')
 const blogRoutes=require('./routes/blogRoutes')
+const lectureRoutes=require('./routes/lectureRoutes.js')
 const app=express();
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001','http://192.168.10.9:3000','https://coursehublms.netlify.app'],
@@ -18,7 +19,8 @@ mongooseConnection();
 app.use('/api/users',userRoutes);
 app.use('/api/auth',authRoutes);
 app.use('/api/blogs',blogRoutes);
-app.use('/api/courses',courseRoutes)
+app.use('/api/courses',courseRoutes);
+app.use('/api/lectures',lectureRoutes)
 app.use('/api/health',(req,res)=>{
     res.status(200).json({
         status:"ok",

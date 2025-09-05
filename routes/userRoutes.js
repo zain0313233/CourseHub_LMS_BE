@@ -4,13 +4,8 @@ const router = express.Router();
 const path = require("path");
 const multer = require("multer");
 const Course = require("../models/course");
-const cloudinary = require("cloudinary").v2;
+const {generateFilename,uploadImageToCloudinary,uploadVideoToCloudinary}=require("../controller/cloudinarycontrollers")
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -27,57 +22,8 @@ const upload = multer({
   }
 });
 
-const uploadVideoToCloudinary = async (buffer, fileName) => {
-  try {
-    const base64Data = buffer.toString("base64");
-    const dataUri = `data:video/mp4;base64,${base64Data}`;
-    
-    const result = await cloudinary.uploader.upload(dataUri, {
-      public_id: fileName,
-      resource_type: "video",
-      folder: "user_videos", 
-      transformation: [
-        { quality: "auto" }, 
-        { format: "mp4" }
-      ]
-    });
 
-    
-    console.log("Cloudinary upload successful:", result.secure_url);
-    return result.secure_url;
-  } catch (error) {
-    console.error("Cloudinary upload error:", error);
-    return null;
-  }
-};
-const uploadImageToCloudinary = async (buffer, fileName) => {
-  try{
-    const base64Data=buffer.toString("base64");
-    const dataUri=`data:image/jpeg;base64,${base64Data}`;
-    const result=await cloudinary.uploader.upload(dataUri,{
-      public_id:fileName,
-      resource_type:"image",
-      folder:"profile_pictures",
-      transformation:[
-        {width:500, height:500, crop:"fill"},
-        {quality:"auto"},
-        {fetch_format:"auto"}
-      ]
-    });
-    console.log("Cloudinary image upload successful:", result.secure_url);
-    return result.secure_url;
-  }catch(error){
-    console.error("Cloudinary image upload error:", error);
-    return null;
-  }
-}
 
-function generateFilename(originalName) {
-  const timestamp = Date.now();
-  const randomString = Math.random().toString(36).substring(2, 15);
-  const extension = path.extname(originalName);
-  return `${timestamp}_${randomString}${extension}`;
-}
  router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -172,7 +118,8 @@ router.patch("/:id/video", upload.single("video"), async (req, res) => {
    
     const updatedUser = await User.findByIdAndUpdate(
       id,
-      { vediotitle: videotitle,
+      { 
+        vediotitle: videotitle,
         vediodescription: vediodescription,
         videoUrl: videoUrl,
         updatedAt: new Date()

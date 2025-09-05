@@ -1,0 +1,66 @@
+const mongoose = require("mongoose");
+
+const lectureSchema=mongoose.Schema(
+    {
+        title:{
+            type:String,
+            required:true,
+            trim:true
+        },
+        description:{
+            type:String,
+            trim:true
+        },
+        courseId:{
+            type:mongoose.Schema.Types.ObjectId,
+            ref:"Course",
+            required:true
+        },
+        contentType:{
+            type:String,
+            enum:["Video","Pdf","ppt","Doc"],
+            required:true
+        },
+        contentUrl:{
+            type:String,
+            required:true
+        },
+        duration:{
+            type:String,
+            trim:true
+        },
+        order:{
+            type:Number,
+            required:true
+        },
+        isPreview:{
+            type:Boolean,
+            default:false
+        },
+       resources:[
+        {
+            title:{
+                type:String,
+                trim:true
+            },
+            url:{
+                type:String,
+                trim:true
+            }
+        }
+       ],
+        createdAt:{
+            type:Date,
+            default:Date.now
+        },
+        updatedAt:{
+            type:Date,
+            default:Date.now
+        }
+    }
+    ,
+    { timestamps: true },
+
+)
+lectureSchema.index({courseId:1,order:1});
+module.exports=mongoose.model("Lectures",lectureSchema)

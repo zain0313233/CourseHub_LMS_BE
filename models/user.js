@@ -68,7 +68,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  videotitle: {
+  vediotitle: {
     type: String,
     trim: true
   },

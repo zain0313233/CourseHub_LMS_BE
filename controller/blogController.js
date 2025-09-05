@@ -1,36 +1,7 @@
 const User = require("../models/user");
 const Blogs = require("../models/blogs");
 const path = require("path");
-const cloudinary = require("cloudinary").v2;
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-const uploadImageTocloudinary = async (buffer, fileName) => {
-  try {
-    const base64Data = buffer.toString("base64");
-    const dataUri = `data:image/jpeg;base64,${base64Data}`;
-    const result = await cloudinary.uploader.upload(dataUri, {
-      public_id: fileName,
-      resource_type: "image"
-    });
-    console.log("Cloudinary upload successful:", result.secure_url);
-    return result.secure_url;
-  } catch (error) {
-    console.error("Cloudinary upload error:", error);
-    return null;
-  }
-};
-
-function generateFilename(originalName) {
-  const timestamp = Date.now();
-  const randomString = Math.random().toString(36).substring(2, 15);
-  const extension = path.extname(originalName);
-  return `${timestamp}_${randomString}${extension}`;
-}
+const {generateFilename,uploadImageToCloudinary}=require("../controller/cloudinarycontrollers")
 
 const createBlog = async (req, res) => {
   try {
@@ -75,7 +46,7 @@ const createBlog = async (req, res) => {
     }
 
     const fileName = generateFilename(thumbnail.originalname);
-    const imageUrl = await uploadImageTocloudinary(thumbnail.buffer, fileName);
+    const imageUrl = await uploadImageToCloudinary(thumbnail.buffer, fileName);
 
     if (!imageUrl) {
       return res.status(500).json({
@@ -132,8 +103,6 @@ try{
 }
 
 module.exports = {
-  uploadImageTocloudinary,
-  generateFilename,
   createBlog,
   getBlogById
 };
