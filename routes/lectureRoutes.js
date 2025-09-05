@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const Course = require("../models/course");
+const Lectures = require("../models/leactures");
 const aws = require("../config/awsconfig");
 const {
   generateFilename,
@@ -17,7 +18,7 @@ const uploadToS3 = async (fileBuffer, fileName, mimeType) => {
     Key: fileName,
     Body: fileBuffer,
     ContentType: mimeType,
-    ACL: "public-read",
+    // ACL: "public-read",
   };
   const result = await s3.upload(params).promise();
   return result.Location;
@@ -87,6 +88,7 @@ router.post("/upload-lecture", upload.single("file"), async (req, res) => {
     const newLecture = {
       title,
       description,
+      courseId,
       contentType,
       contentUrl,
       duration,
@@ -94,8 +96,8 @@ router.post("/upload-lecture", upload.single("file"), async (req, res) => {
       isPreview: isPreview === "true",
     };
 
-    course.lectures.push(newLecture);
-    await course.save();
+    const lecture = new Lectures(newLecture);
+    await lecture.save();
 
     res
       .status(200)
