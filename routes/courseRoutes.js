@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const Course = require("../models/course");
+const Lectures = require("../models/leactures");
 const express = require("express");
 const router = express.Router();
 const path = require("path");
@@ -237,10 +238,13 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+const lectures = await Lectures.find({ courseId: id }).sort({ order: 1 });
+
     res.status(200).json({
       success: true,
       message: "Course retrieved successfully",
-      course
+      coursedata:course,
+      lectures
     });
 
   } catch (error) {
